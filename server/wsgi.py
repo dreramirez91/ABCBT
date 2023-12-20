@@ -1,16 +1,19 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify, make_response
 from markupsafe import escape
 from pymongo import MongoClient
 from dotenv import dotenv_values
 from bson import json_util, ObjectId
 import json
 from json import JSONEncoder
-
+import requests
+import pprint
+from flask_bcrypt import Bcrypt
 
 class CustomJSONEncoder(JSONEncoder):
     def default(self, obj): return json_util.default(obj)
     
 app = Flask(__name__)
+bcrypt = Bcrypt(app)
 
 app.json_encoder = CustomJSONEncoder
 
@@ -22,7 +25,7 @@ with app.app_context():
     print("\n\n\n", "Connected to MongoDB!", app.database, "\n\n\n")
     
 @app.route("/disputations/", methods=['GET', 'POST', 'DELETE'])
-def crud_all_disputations():
+def CRUD_all_disputations():
     if request.method == 'GET':
         all_disputations = app.database["disputations"].find()
         data = json.loads(json_util.dumps([d for d in all_disputations]))
@@ -43,7 +46,7 @@ def crud_all_disputations():
         return {"deleted_count": response.deleted_count}
 
 @app.route("/disputations/<id>/", methods=['GET', 'PUT', 'DELETE'])
-def crud_one_disputation(id):
+def CRUD_one_disputation(id):
     if request.method == 'GET':
         one_disputation = app.database["disputations"].find_one({"_id": ObjectId(id)})
         data = json.loads(json_util.dumps(one_disputation))
@@ -57,5 +60,27 @@ def crud_one_disputation(id):
         response = app.database["disputations"].replace_one({"_id": ObjectId(id)}, disputation)
         return {"updated_count": response.modified_count}
         
+@app.route("/users/", methods=['GET', 'POST'])
+def CRUD_one_user(id=None):
+    if request.method == 'GET':
+        all_users = app.database["users"].find()
+        data = json.loads(json_util.dumps([u for u in all_users]))
+        for u in data:
+            u["_id"] = u["_id"]["$oid"]
+        return {"users": data}
+    elif request.method == 'POST':
+        new_user = request.json
+        new_user["hashed_password"] = bcrypt.generate_password_hash(new_user["hashed_password"])
+        print("\n\n=================\n\n\n\n", new_user, "\n\n\n\n=================\n\n")
+        app.database["users"].insert_one(new_user)
+        added_user = json.loads(json_util.dumps(app.database["users"].find_one(
+             {"_id": new_user['_id']})))
+        return added_user
+    
+    
     
 # flake8:noqa
+# print("\n\n=================\n\n\n\n", response, "\n\n\n\n=================\n\n")
+
+# SIGN IN
+# bcrypt.check_password_hash(users_doc["password"], request.form["password"]) # Just an example of how you could use it.
