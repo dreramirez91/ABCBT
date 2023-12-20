@@ -7,3 +7,4 @@ structure.json
 .flake8
 __pycache__
 server/notes.txt
+server/.env
