@@ -8,3 +8,4 @@ structure.json
 __pycache__
 server/notes.txt
 server/.env
+checklist.txt

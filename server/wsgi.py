@@ -1,11 +1,9 @@
-from flask import Flask, request, jsonify, make_response, Response
-from markupsafe import escape
+from flask import Flask, request, Response
 from pymongo import MongoClient
 from dotenv import dotenv_values
 from bson import json_util, ObjectId
 import json
 from json import JSONEncoder
-import requests
 import pprint
 from flask_bcrypt import Bcrypt
 
@@ -24,40 +22,40 @@ with app.app_context():
     app.database = app.mongodb_client[config["DB_NAME"]]
     print("\n\n\n", "Connected to MongoDB!", app.database, "\n\n\n")
     
-@app.route("/disputations/", methods=['GET', 'POST', 'DELETE'])
-def CRUD_all_disputations():
+@app.route("/reframes/", methods=['GET', 'POST', 'DELETE'])
+def CRUD_all_reframes():
     if request.method == 'GET':
-        all_disputations = app.database["disputations"].find()
-        data = json.loads(json_util.dumps([d for d in all_disputations]))
+        all_reframes = app.database["reframes"].find()
+        data = json.loads(json_util.dumps([d for d in all_reframes]))
         print(type(data), "-------\n\n\n")
-        for d in data:
-            d["_id"] = d["_id"]["$oid"]
-        return {"disputations": data}
+        for r in data:
+            r["_id"] = r["_id"]["$oid"]
+        return {"reframes": data}
     elif request.method == 'POST':
-        disputation = request.json
-        app.database["disputations"].insert_one(disputation)
-        new_disputation = json.loads(json_util.dumps(app.database["disputations"].find_one(
-            {"_id": disputation['_id']}))
+        reframe = request.json
+        app.database["reframes"].insert_one(reframe)
+        new_reframe = json.loads(json_util.dumps(app.database["reframes"].find_one(
+            {"_id": reframe['_id']}))
         )
-        return new_disputation
+        return new_reframe
     elif request.method == 'DELETE':
-        response = app.database["disputations"].delete_many({})
+        response = app.database["reframes"].delete_many({})
         print("\n\n\n----------", response, "---------\n\n\n")
         return {"deleted_count": response.deleted_count}
 
-@app.route("/disputations/<id>/", methods=['GET', 'PUT', 'DELETE'])
-def CRUD_one_disputation(id):
+@app.route("/reframes/<id>/", methods=['GET', 'PUT', 'DELETE'])
+def CRUD_one_reframe(id):
     if request.method == 'GET':
-        one_disputation = app.database["disputations"].find_one({"_id": ObjectId(id)})
-        data = json.loads(json_util.dumps(one_disputation))
-        return {"disputation": data}
+        one_reframe = app.database["reframes"].find_one({"_id": ObjectId(id)})
+        data = json.loads(json_util.dumps(one_reframe))
+        return {"reframe": data}
     elif request.method == 'DELETE':
-        response = app.database["disputations"].delete_one({"_id": ObjectId(id)})
+        response = app.database["reframes"].delete_one({"_id": ObjectId(id)})
         print("\n\n\n----------", response, "---------\n\n\n")
         return {"deleted_count": response.deleted_count}
     elif request.method == 'PUT':
-        disputation = request.json
-        response = app.database["disputations"].replace_one({"_id": ObjectId(id)}, disputation)
+        reframe_data = request.json
+        response = app.database["reframes"].replace_one({"_id": ObjectId(id)}, reframe_data)
         return {"updated_count": response.modified_count}
         
 @app.route("/users/", methods=['GET', 'POST', 'DELETE'])
@@ -71,7 +69,6 @@ def CRUD_all_users():
     elif request.method == 'POST':
         new_user = request.json
         existing_user = app.database["users"].find_one({"email": new_user["email"]})
-        print("\n\n=================\n\n\n\n", existing_user, "\n\n\n\n=================\n\n")
         if existing_user:
             return Response("The email you entered is already tied to an account.", status=400)
         new_user["hashed_password"] = bcrypt.generate_password_hash(new_user["hashed_password"])
