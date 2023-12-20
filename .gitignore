@@ -1,0 +1,9 @@
+db/notes.txt
+.venv
+fastapi.py
+flask_notes.py
+os_study.py
+structure.json
+.flake8
+__pycache__
+server/notes.txt
