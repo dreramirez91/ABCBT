@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response, Response
 from markupsafe import escape
 from pymongo import MongoClient
 from dotenv import dotenv_values
@@ -60,8 +60,8 @@ def CRUD_one_disputation(id):
         response = app.database["disputations"].replace_one({"_id": ObjectId(id)}, disputation)
         return {"updated_count": response.modified_count}
         
-@app.route("/users/", methods=['GET', 'POST'])
-def CRUD_one_user(id=None):
+@app.route("/users/", methods=['GET', 'POST', 'DELETE'])
+def CRUD_all_users():
     if request.method == 'GET':
         all_users = app.database["users"].find()
         data = json.loads(json_util.dumps([u for u in all_users]))
@@ -70,12 +70,18 @@ def CRUD_one_user(id=None):
         return {"users": data}
     elif request.method == 'POST':
         new_user = request.json
+        existing_user = app.database["users"].find_one({"email": new_user["email"]})
+        print("\n\n=================\n\n\n\n", existing_user, "\n\n\n\n=================\n\n")
+        if existing_user:
+            return Response("The email you entered is already tied to an account.", status=400)
         new_user["hashed_password"] = bcrypt.generate_password_hash(new_user["hashed_password"])
-        print("\n\n=================\n\n\n\n", new_user, "\n\n\n\n=================\n\n")
         app.database["users"].insert_one(new_user)
         added_user = json.loads(json_util.dumps(app.database["users"].find_one(
              {"_id": new_user['_id']})))
         return added_user
+    elif request.method == 'DELETE':
+        response = app.database["users"].delete_many({})
+        return {"deleted_count": response.deleted_count}
     
     
     
