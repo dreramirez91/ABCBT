@@ -1,21 +1,26 @@
 from flask import Flask, request, Response
 from pymongo import MongoClient
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 from bson import json_util, ObjectId
 import json
+import os
 import pprint
+import jwt
+
 from flask_bcrypt import Bcrypt, check_password_hash
 
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
 
-config = dotenv_values(".env")
+load_dotenv()
+
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
 with app.app_context():
-    app.mongodb_client = MongoClient(config["ATLAS_URI"])
-    app.database = app.mongodb_client[config["DB_NAME"]]
-    print("\n\n\n", "Connected to MongoDB!", app.database, "\n\n\n")
+    app.mongodb_client = MongoClient(os.getenv("ATLAS_URI"))
+    app.database = app.mongodb_client[os.getenv("DB_NAME")]
+    print("\n\n=================\n\n\n\n", "Connected to MongoDB!", app.database, "\n\n\n\n=================\n\n")
 
 
 @app.route("/reframes/", methods=["GET", "POST", "DELETE"])
@@ -23,7 +28,6 @@ def CRUD_all_reframes():
     if request.method == "GET":
         all_reframes = app.database["reframes"].find()
         data = json.loads(json_util.dumps([d for d in all_reframes]))
-        print(type(data), "-------\n\n\n")
         for r in data:
             r["_id"] = r["_id"]["$oid"]
         return {"reframes": data}
@@ -36,7 +40,6 @@ def CRUD_all_reframes():
         return new_reframe
     elif request.method == "DELETE":
         response = app.database["reframes"].delete_many({})
-        print("\n\n\n----------", response, "---------\n\n\n")
         return {"deleted_count": response.deleted_count}
 
 
@@ -48,7 +51,6 @@ def CRUD_one_reframe(id):
         return {"reframe": data}
     elif request.method == "DELETE":
         response = app.database["reframes"].delete_one({"_id": ObjectId(id)})
-        print("\n\n\n----------", response, "---------\n\n\n")
         return {"deleted_count": response.deleted_count}
     elif request.method == "PUT":
         reframe_data = request.json
@@ -89,12 +91,38 @@ def CRUD_all_users():
 def login():
     login_info = request.json
     user_info = app.database["users"].find_one({"email": login_info["email"]})
+    user_id = user_info['_id']
     valid_password = check_password_hash(user_info["hashed_password"], login_info["password"])
     if valid_password:
-        pass # give token using JWT...
+        try:
+            token = jwt.encode(
+                {"user_id": json_util.dumps(user_id)},
+                 app.config["SECRET_KEY"],
+                 algorithm="HS256"
+            )
+            return {
+                "message": "Successfully fetched auth token",
+                "token": token
+            }
+        except Exception as e:
+            return {
+                "message": str(e)
+            }, 500
+    else:
+        return Response(
+                "Invalid password.", status=400
+            )
+         
+         
+        # give token in response to client using JWT...
 
-# SIGN IN
-# bcrypt.check_password_hash(users_doc["password"], request.form["password"]) # Just an example of how you could use it.
+# When to prove authorization send token in headers to server
+# Authorization: Bearer <token>
+# Best place to store tokens are in cookies because they are not accessible via JavaScript like they are in localStorage and sessionStorage
+# Cookies are also automatically sent to the server
+# Always use HTTPS
+# Sessions are stored server-side, tokens stored client-side (therefore more scalable)
+# Access-Control-Allow-Origin: *
 
 # flake8:noqa
 
