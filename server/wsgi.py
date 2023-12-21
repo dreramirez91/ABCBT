@@ -27,6 +27,7 @@ with app.app_context():
         "\n\n\n\n=================\n\n",
     )
 
+from .auth_middleware import token_required
 
 @app.route("/reframes/", methods=["GET", "POST", "DELETE"])
 def CRUD_all_reframes():
@@ -39,9 +40,7 @@ def CRUD_all_reframes():
     elif request.method == "POST":
         reframe = request.json
         app.database["reframes"].insert_one(reframe)
-        new_reframe = json.loads(
-            json_util.dumps(app.database["reframes"].find_one({"_id": reframe["_id"]}))
-        )
+        new_reframe = json_util.dumps(app.database["reframes"].find_one({"_id": reframe["_id"]}))
         return new_reframe
     elif request.method == "DELETE":
         response = app.database["reframes"].delete_many({})
@@ -49,6 +48,7 @@ def CRUD_all_reframes():
 
 
 @app.route("/reframes/<id>/", methods=["GET", "PUT", "DELETE"])
+@token_required
 def CRUD_one_reframe(id):
     if request.method == "GET":
         one_reframe = app.database["reframes"].find_one({"_id": ObjectId(id)})
@@ -77,16 +77,12 @@ def CRUD_all_users():
         new_user = request.json
         existing_user = app.database["users"].find_one({"email": new_user["email"]})
         if existing_user:
-            return Response(
-                "The email you entered is already tied to an account.", status=400
-            )
+            return {"error": "Invalid email", "data": None, "message": "The email you entered is already tied to an account."}, 400
         new_user["hashed_password"] = bcrypt.generate_password_hash(
             new_user["hashed_password"]
         )
         app.database["users"].insert_one(new_user)
-        added_user = json.loads(
-            json_util.dumps(app.database["users"].find_one({"_id": new_user["_id"]}))
-        )
+        added_user = json_util.dumps(app.database["users"].find_one({"_id": new_user["_id"]}))
         return added_user
     elif request.method == "DELETE":
         response = app.database["users"].delete_many({})
@@ -112,7 +108,7 @@ def login():
         except Exception as e:
             return {"message": str(e)}, 500
     else:
-        return Response("Invalid password.", status=400)
+        return {"message": "Invalid password."}, 400
 
 
 # flake8:noqa
