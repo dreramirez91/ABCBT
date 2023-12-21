@@ -20,7 +20,12 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 with app.app_context():
     app.mongodb_client = MongoClient(os.getenv("ATLAS_URI"))
     app.database = app.mongodb_client[os.getenv("DB_NAME")]
-    print("\n\n=================\n\n\n\n", "Connected to MongoDB!", app.database, "\n\n\n\n=================\n\n")
+    print(
+        "\n\n=================\n\n\n\n",
+        "Connected to MongoDB!",
+        app.database,
+        "\n\n\n\n=================\n\n",
+    )
 
 
 @app.route("/reframes/", methods=["GET", "POST", "DELETE"])
@@ -87,42 +92,28 @@ def CRUD_all_users():
         response = app.database["users"].delete_many({})
         return {"deleted_count": response.deleted_count}
 
+
 @app.route("/users/login/", methods=["POST"])
 def login():
     login_info = request.json
     user_info = app.database["users"].find_one({"email": login_info["email"]})
-    user_id = user_info['_id']
-    valid_password = check_password_hash(user_info["hashed_password"], login_info["password"])
+    user_id = user_info["_id"]
+    valid_password = check_password_hash(
+        user_info["hashed_password"], login_info["password"]
+    )
     if valid_password:
         try:
             token = jwt.encode(
                 {"user_id": json_util.dumps(user_id)},
-                 app.config["SECRET_KEY"],
-                 algorithm="HS256"
+                app.config["SECRET_KEY"],
+                algorithm="HS256",
             )
-            return {
-                "message": "Successfully fetched auth token",
-                "token": token
-            }
+            return {"message": "Successfully fetched auth token", "token": token}
         except Exception as e:
-            return {
-                "message": str(e)
-            }, 500
+            return {"message": str(e)}, 500
     else:
-        return Response(
-                "Invalid password.", status=400
-            )
-         
-         
-        # give token in response to client using JWT...
+        return Response("Invalid password.", status=400)
 
-# When to prove authorization send token in headers to server
-# Authorization: Bearer <token>
-# Best place to store tokens are in cookies because they are not accessible via JavaScript like they are in localStorage and sessionStorage
-# Cookies are also automatically sent to the server
-# Always use HTTPS
-# Sessions are stored server-side, tokens stored client-side (therefore more scalable)
-# Access-Control-Allow-Origin: *
 
 # flake8:noqa
 
