@@ -4,7 +4,7 @@ from dotenv import dotenv_values
 from bson import json_util, ObjectId
 import json
 import pprint
-from flask_bcrypt import Bcrypt
+from flask_bcrypt import Bcrypt, check_password_hash
 
 
 app = Flask(__name__)
@@ -85,9 +85,17 @@ def CRUD_all_users():
         response = app.database["users"].delete_many({})
         return {"deleted_count": response.deleted_count}
 
-
-# flake8:noqa
-# print("\n\n=================\n\n\n\n", response, "\n\n\n\n=================\n\n")
+@app.route("/users/login/", methods=["POST"])
+def login():
+    login_info = request.json
+    user_info = app.database["users"].find_one({"email": login_info["email"]})
+    valid_password = check_password_hash(user_info["hashed_password"], login_info["password"])
+    if valid_password:
+        pass # give token using JWT...
 
 # SIGN IN
 # bcrypt.check_password_hash(users_doc["password"], request.form["password"]) # Just an example of how you could use it.
+
+# flake8:noqa
+
+# print("\n\n=================\n\n\n\n", user_info, "\n\n\n\n=================\n\n")
