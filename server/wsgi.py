@@ -30,6 +30,7 @@ with app.app_context():
 from .auth_middleware import token_required
 
 @app.route("/reframes/", methods=["GET", "POST", "DELETE"])
+@token_required
 def CRUD_all_reframes():
     if request.method == "GET":
         all_reframes = app.database["reframes"].find()
